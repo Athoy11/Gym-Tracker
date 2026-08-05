@@ -1,15 +1,13 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getHistory } from '../utils/storage';
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
-} from 'recharts';
-import { TrendingUp, Flame, AlertCircle } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { TrendingUp, Award, Calendar, Activity } from 'lucide-react';
 
 const Dashboard = () => {
   const [history, setHistory] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [metricType, setMetricType] = useState('weight'); // 'weight', '1rm', 'volume'
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -30,69 +28,91 @@ const Dashboard = () => {
 
   // Process data for charts
   const { exerciseData, insights } = useMemo(() => {
-    if (!history.length) return { exerciseData: {}, insights: [] };
+    if (history.length === 0) return { exerciseData: {}, insights: [] };
 
     const exData = {};
-    const recentImprovements = [];
-    const plateauing = [];
-
-    // Reverse history to process chronologically
-    const chronologicalHistory = [...history].reverse();
-
-    chronologicalHistory.forEach(entry => {
-      const dateStr = new Date(entry.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const generatedInsights = [];
+    
+    // Sort history chronologically for the charts (oldest to newest)
+    const sortedHistory = [...history].sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    sortedHistory.forEach(session => {
+      const dateStr = new Date(session.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
       
-      entry.exercises.forEach(ex => {
+      session.exercises.forEach(ex => {
         if (!exData[ex.name]) {
           exData[ex.name] = [];
         }
+        
+        // Epley formula: 1RM = Weight * (1 + Reps/30)
+        // If reps is not provided or 0, fallback to weight
+        const reps = ex.reps || 1;
+        const sets = ex.sets || 1;
+        const weight = parseFloat(ex.weight) || 0;
+        
+        const oneRepMax = weight > 0 ? weight * (1 + (reps / 30)) : 0;
+        const volume = weight * sets * reps;
+
         exData[ex.name].push({
           date: dateStr,
-          weight: ex.weight
+          weight: weight,
+          oneRepMax: Math.round(oneRepMax),
+          volume: volume
         });
       });
     });
 
-    // Generate insights based on the last 3 sessions of each exercise
-    Object.keys(exData).forEach(exName => {
-      const data = exData[exName];
-      if (data.length >= 2) {
-        const last = data[data.length - 1].weight;
-        const prev = data[data.length - 2].weight;
-        
-        if (last > prev) {
-          recentImprovements.push(exName);
-        } else if (last === prev && data.length >= 3 && data[data.length - 3].weight === last) {
-          plateauing.push(exName);
+    // Generate insights
+    let totalWorkouts = history.length;
+    let mostFrequentDay = '';
+    const dayCounts = { Push: 0, Pull: 0, Leg: 0 };
+    
+    history.forEach(h => {
+      if (dayCounts[h.dayType] !== undefined) dayCounts[h.dayType]++;
+    });
+    
+    const maxCount = Math.max(dayCounts.Push, dayCounts.Pull, dayCounts.Leg);
+    if (maxCount > 0) {
+      mostFrequentDay = Object.keys(dayCounts).find(k => dayCounts[k] === maxCount);
+    }
+
+    generatedInsights.push({
+      icon: <Calendar size={24} color="var(--primary-color)" />,
+      title: "Total Workouts",
+      value: totalWorkouts.toString()
+    });
+
+    if (mostFrequentDay) {
+      generatedInsights.push({
+        icon: <Activity size={24} color="var(--accent-color)" />,
+        title: "Most Frequent",
+        value: `${mostFrequentDay} Day`
+      });
+    }
+
+    // Find biggest improvement (using 1RM for truer strength calculation)
+    let bestImprovement = 0;
+    let bestExercise = '';
+
+    Object.entries(exData).forEach(([name, data]) => {
+      if (data.length > 1) {
+        const first1RM = data[0].oneRepMax;
+        const last1RM = data[data.length - 1].oneRepMax;
+        if (first1RM > 0) {
+          const percentIncrease = ((last1RM - first1RM) / first1RM) * 100;
+          if (percentIncrease > bestImprovement) {
+            bestImprovement = percentIncrease;
+            bestExercise = name;
+          }
         }
       }
     });
 
-    const generatedInsights = [];
-    if (recentImprovements.length > 0) {
+    if (bestExercise && bestImprovement > 0) {
       generatedInsights.push({
-        type: 'success',
-        icon: <TrendingUp size={24} />,
-        title: "Great Progress!",
-        message: `You've recently increased your weight on: ${recentImprovements.join(', ')}.`
-      });
-    }
-    
-    if (plateauing.length > 0) {
-      generatedInsights.push({
-        type: 'warning',
-        icon: <AlertCircle size={24} />,
-        title: "Plateau Alert",
-        message: `Your weight hasn't changed in the last few sessions for: ${plateauing.join(', ')}. Consider a deload or changing rep ranges.`
-      });
-    }
-
-    if (history.length >= 3) {
-      generatedInsights.push({
-        type: 'fire',
-        icon: <Flame size={24} />,
-        title: "Consistent!",
-        message: `You've logged ${history.length} workouts. Keep the momentum going!`
+        icon: <TrendingUp size={24} color="var(--success-color)" />,
+        title: "Top Progress",
+        value: `${bestExercise} (+${Math.round(bestImprovement)}%)`
       });
     }
 
@@ -119,98 +139,114 @@ const Dashboard = () => {
   if (history.length === 0) {
     return (
       <div className="animate-fade-in" style={{ textAlign: 'center', marginTop: '64px' }}>
-        <h2 style={{ color: 'var(--text-secondary)' }}>Welcome to PPL Tracker</h2>
-        <p style={{ color: 'var(--text-muted)' }}>Start logging your workouts to see your progress dashboard.</p>
+        <div style={{ color: 'var(--primary-color)', marginBottom: '16px' }}>
+          <Award size={64} style={{ margin: '0 auto' }} />
+        </div>
+        <h2 className="text-gradient">Welcome to Gym Tracker</h2>
+        <p style={{ color: 'var(--text-secondary)', maxWidth: '400px', margin: '0 auto' }}>
+          Your dashboard is empty. Log your first Push, Pull, or Leg workout to start seeing your progress and analytics!
+        </p>
       </div>
     );
   }
 
-  // Choose a top exercise to display on the chart by default
-  const topExercises = Object.keys(exerciseData).filter(key => exerciseData[key].length > 1);
-  
   return (
     <div className="animate-fade-in" style={{ maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
       <div style={{ marginBottom: '32px' }}>
         <h2 className="text-gradient" style={{ fontSize: '2.5rem', marginBottom: '8px' }}>Dashboard</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>Your progress and insights</p>
+        <p style={{ color: 'var(--text-secondary)' }}>Track your progressive overload</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+        gap: '20px',
+        marginBottom: '40px'
+      }}>
         {insights.map((insight, idx) => (
-          <div key={idx} className={`stat-card stagger-${idx + 1}`} style={{
-            borderTop: insight.type === 'success' ? '4px solid var(--success-color)' : 
-                       insight.type === 'warning' ? '4px solid var(--warning-color)' : 
-                       '4px solid var(--primary-color)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-              <div style={{ 
-                color: insight.type === 'success' ? 'var(--success-color)' : 
-                       insight.type === 'warning' ? 'var(--warning-color)' : 
-                       'var(--primary-color)'
-              }}>
-                {insight.icon}
-              </div>
-              <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{insight.title}</h3>
+          <div key={idx} className={`glass-panel animate-fade-in stagger-${idx + 1}`} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '20px' }}>
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px' }}>
+              {insight.icon}
             </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0, lineHeight: 1.6 }}>
-              {insight.message}
-            </p>
+            <div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>{insight.title}</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{insight.value}</div>
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="glass-panel animate-fade-in stagger-3">
-        <h3 style={{ marginBottom: '24px', fontSize: '1.3rem' }}>Progress Overview</h3>
-        {topExercises.length > 0 ? (
-          <div style={{ width: '100%', height: '400px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="var(--text-muted)" 
-                  tick={{ fill: 'var(--text-secondary)' }}
-                  allowDuplicatedCategory={false}
-                />
-                <YAxis 
-                  stroke="var(--text-muted)" 
-                  tick={{ fill: 'var(--text-secondary)' }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'var(--surface-color)', 
-                    borderColor: 'var(--border-color)',
-                    borderRadius: '8px',
-                    boxShadow: 'var(--shadow-lg)'
-                  }}
-                  itemStyle={{ color: 'var(--text-primary)' }}
-                />
-                <Legend wrapperStyle={{ paddingTop: '20px' }}/>
-                {topExercises.slice(0, 5).map((exName, idx) => {
-                  const colors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6'];
-                  return (
-                    <Line 
-                      key={exName}
-                      data={exerciseData[exName]}
-                      type="monotone" 
-                      dataKey="weight" 
-                      name={exName}
-                      stroke={colors[idx % colors.length]} 
-                      strokeWidth={3}
-                      dot={{ r: 4, strokeWidth: 2 }}
-                      activeDot={{ r: 6 }}
-                    />
-                  );
-                })}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px 0' }}>
-            Not enough data to display progress charts yet. Keep logging!
-          </p>
-        )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
+        <h3 style={{ margin: 0 }}>Progress Charts</h3>
+        
+        <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '8px' }}>
+          <button 
+            onClick={() => setMetricType('weight')}
+            style={{ 
+              background: metricType === 'weight' ? 'var(--surface-color-light)' : 'transparent',
+              color: metricType === 'weight' ? 'var(--text-primary)' : 'var(--text-muted)',
+              border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600
+            }}
+          >Raw Weight</button>
+          <button 
+            onClick={() => setMetricType('1rm')}
+            style={{ 
+              background: metricType === '1rm' ? 'var(--surface-color-light)' : 'transparent',
+              color: metricType === '1rm' ? 'var(--text-primary)' : 'var(--text-muted)',
+              border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600
+            }}
+          >Est. 1RM</button>
+          <button 
+            onClick={() => setMetricType('volume')}
+            style={{ 
+              background: metricType === 'volume' ? 'var(--surface-color-light)' : 'transparent',
+              color: metricType === 'volume' ? 'var(--text-primary)' : 'var(--text-muted)',
+              border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600
+            }}
+          >Volume</button>
+        </div>
       </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+        {Object.entries(exerciseData).filter(([_, data]) => data.length > 1).map(([name, data], idx) => (
+          <div key={name} className={`glass-panel animate-fade-in stagger-${(idx % 4) + 1}`}>
+            <h4 style={{ margin: '0 0 16px 0', color: 'var(--text-secondary)' }}>{name}</h4>
+            <div style={{ height: '200px', width: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
+                  <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '8px' }}
+                    itemStyle={{ color: 'var(--primary-color)' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey={metricType === 'weight' ? 'weight' : metricType === '1rm' ? 'oneRepMax' : 'volume'} 
+                    stroke="url(#colorGradient)" 
+                    strokeWidth={3} 
+                    dot={{ fill: 'var(--primary-color)', strokeWidth: 2, r: 4 }} 
+                    activeDot={{ r: 6, stroke: 'var(--accent-color)' }}
+                  />
+                  <defs>
+                    <linearGradient id="colorGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="5%" stopColor="var(--primary-color)" />
+                      <stop offset="95%" stopColor="var(--accent-color)" />
+                    </linearGradient>
+                  </defs>
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {Object.values(exerciseData).every(data => data.length <= 1) && (
+        <div className="glass-panel" style={{ textAlign: 'center', padding: '40px' }}>
+          <p style={{ color: 'var(--text-muted)' }}>Log the same exercises multiple times to see your progress charts here.</p>
+        </div>
+      )}
     </div>
   );
 };

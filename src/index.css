@@ -1,40 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;700;800&display=swap');
 
 :root {
-  /* Color Palette - Premium Dark */
-  --bg-color: #0b0f19;
-  --surface-color: #1a1f2e;
-  --surface-color-light: #252b3d;
+  /* Color Palette - Minimalist Gym Dark */
+  --bg-color: #121212;
+  --surface-color: #1c1c1e;
+  --surface-color-light: #2c2c2e;
   
-  --primary-color: #6366f1; /* Indigo */
-  --primary-hover: #818cf8;
-  --secondary-color: #ec4899; /* Pink */
+  --primary-color: #ccff00; /* Volt Yellow */
+  --primary-hover: #b3e600;
+  --secondary-color: #ff3333; /* Gym Red for accents/danger */
   
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #475569;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
   
-  --success-color: #10b981;
+  --success-color: #ccff00; /* Reusing primary for success since it's volt */
   --warning-color: #f59e0b;
-  --danger-color: #ef4444;
+  --danger-color: #ff3333;
 
-  /* Gradients */
-  --gradient-primary: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+  /* Remove Gradients, use solid flats */
+  --gradient-primary: var(--primary-color);
   
-  /* Borders and Shadows */
-  --border-color: rgba(255, 255, 255, 0.08);
-  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+  /* Borders and Shadows (Flat and Sharp) */
+  --border-color: #27272a; /* Slightly lighter than surface */
+  --shadow-sm: none;
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.5);
   
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-display: 'Outfit', var(--font-sans);
   
   /* Spacing */
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
   --radius-full: 9999px;
 }
 
@@ -65,15 +63,15 @@ body {
 /* Typography Utility */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 800; /* Bolder for gym feel */
   line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
 }
 
+/* Keep class name but remove actual gradient */
 .text-gradient {
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text-primary);
 }
 
 /* Layout */
@@ -87,11 +85,9 @@ h1, h2, h3, h4, h5, h6 {
 /* UI Elements */
 .glass-panel {
   background: var(--surface-color);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* Removed backdrop-filter for flat minimalist look */
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
   padding: 24px;
 }
 
@@ -101,8 +97,10 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
   padding: 12px 24px;
   border-radius: var(--radius-md);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   cursor: pointer;
   transition: all 0.2s ease;
   border: none;
@@ -111,14 +109,12 @@ h1, h2, h3, h4, h5, h6 {
 
 .btn-primary {
   background: var(--primary-color);
-  color: white;
-  box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.39);
+  color: #000000; /* Black text on volt yellow */
 }
 
 .btn-primary:hover {
   background: var(--primary-hover);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
 }
 
 .btn-secondary {
@@ -128,8 +124,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
+  background: #3f3f46;
 }
 
 .btn-outline {
@@ -139,8 +134,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-outline:hover {
-  background: rgba(99, 102, 241, 0.1);
-  transform: translateY(-2px);
+  background: var(--primary-color);
+  color: #000;
 }
 
 /* Forms */
@@ -152,8 +147,10 @@ h1, h2, h3, h4, h5, h6 {
   display: block;
   margin-bottom: 8px;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .form-input {
@@ -165,13 +162,12 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-primary);
   font-family: inherit;
   font-size: 1rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s;
 }
 
 .form-input:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
 /* Animations */
@@ -198,28 +194,17 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid var(--border-color);
   position: relative;
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.3s ease;
 }
 
 .stat-card:hover {
   transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 4px;
-  background: var(--gradient-primary);
 }
 
 .stat-title {
   color: var(--text-secondary);
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -227,7 +212,7 @@ h1, h2, h3, h4, h5, h6 {
 .stat-value {
   font-family: var(--font-display);
   font-size: 2rem;
-  font-weight: 700;
+  font-weight: 800;
   margin-top: 8px;
   color: var(--text-primary);
 }
@@ -245,10 +230,10 @@ h1, h2, h3, h4, h5, h6 {
   .exercise-row {
     grid-template-columns: 1fr 1fr !important;
     gap: 8px !important;
-    background: rgba(255,255,255,0.02);
+    background: transparent !important;
     padding: 16px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color) !important;
     position: relative;
     align-items: stretch !important;
   }

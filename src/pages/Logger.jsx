@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getRoutine, saveWorkout } from '../utils/storage';
+import { getRoutine, saveWorkout, getLastWorkout } from '../utils/storage';
 import { Plus, Trash2, Save, Activity, Calendar } from 'lucide-react';
 
 const Logger = () => {
@@ -8,6 +8,7 @@ const Logger = () => {
   const [workoutDate, setWorkoutDate] = useState(new Date().toISOString().split('T')[0]);
   const [exercises, setExercises] = useState([]);
   const [editModeId, setEditModeId] = useState(null);
+  const [ghostData, setGhostData] = useState({});
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -39,8 +40,21 @@ const Logger = () => {
           } else {
             setExercises([{ name: '', weight: '', sets: '', reps: '', unit: 'lbs' }]);
           }
+          
+          // Fetch ghost data
+          const lastWorkout = await getLastWorkout(dayType);
+          if (lastWorkout && lastWorkout.exercises) {
+            const ghostMap = {};
+            lastWorkout.exercises.forEach(ex => {
+              ghostMap[ex.name] = ex;
+            });
+            setGhostData(ghostMap);
+          } else {
+            setGhostData({});
+          }
         } else if (!editModeId) {
           setExercises([]);
+          setGhostData({});
         }
       } catch (err) {
         console.error(err);
@@ -141,7 +155,7 @@ const Logger = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h3 style={{ margin: 0 }}>Exercises</h3>
             {routineCache.length === 0 && !editModeId && (
-              <span style={{ fontSize: '0.85rem', color: 'var(--success-color)', background: 'rgba(16, 185, 129, 0.1)', padding: '4px 8px', borderRadius: '4px' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--success-color)', background: 'rgba(204, 255, 0, 0.1)', padding: '4px 8px', borderRadius: '4px' }}>
                 First Time Setup
               </span>
             )}
@@ -159,20 +173,28 @@ const Logger = () => {
 
             {exercises.map((ex, index) => {
               const isPredefined = routineCache.includes(ex.name) && !editModeId;
+              const ghost = ghostData[ex.name];
               return (
                 <div key={index} className="exercise-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr auto', gap: '12px', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="Name"
-                    value={ex.name}
-                    onChange={(e) => handleChange(index, 'name', e.target.value)}
-                    readOnly={isPredefined && ex.name !== ''}
-                    style={{ 
-                      opacity: isPredefined && ex.name !== '' ? 0.7 : 1,
-                      background: isPredefined && ex.name !== '' ? 'rgba(0,0,0,0.2)' : 'var(--bg-color)'
-                    }}
-                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Name"
+                      value={ex.name}
+                      onChange={(e) => handleChange(index, 'name', e.target.value)}
+                      readOnly={isPredefined && ex.name !== ''}
+                      style={{ 
+                        opacity: isPredefined && ex.name !== '' ? 0.7 : 1,
+                        background: isPredefined && ex.name !== '' ? 'rgba(0,0,0,0.2)' : 'var(--bg-color)'
+                      }}
+                    />
+                    {ghost && !editModeId && (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Last: {ghost.weight} {ghost.unit || 'lbs'} ({ghost.sets}s × {ghost.reps}r)
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="number"
                     className="form-input"

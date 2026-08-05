@@ -112,12 +112,12 @@ const History = () => {
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <div style={{ 
-                    background: 'var(--gradient-primary)', 
+                    background: 'var(--primary-color)', 
                     padding: '6px 12px', 
-                    borderRadius: '999px',
+                    borderRadius: '4px',
                     fontSize: '0.85rem',
-                    fontWeight: 'bold',
-                    color: 'white',
+                    fontWeight: '800',
+                    color: '#000',
                     letterSpacing: '0.05em',
                     textTransform: 'uppercase'
                   }}>
