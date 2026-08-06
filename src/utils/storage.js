@@ -23,7 +23,7 @@ const requireAuth = () => {
   return user.uid;
 };
 
-export const saveWorkout = async (dayType, exercises, workoutDate, editModeId = null) => {
+export const saveWorkout = async (dayType, exercises, workoutDate, editModeId = null, bodyWeight = null) => {
   const uid = requireAuth();
   
   let finalDate = new Date().toISOString();
@@ -38,6 +38,10 @@ export const saveWorkout = async (dayType, exercises, workoutDate, editModeId = 
     dayType,
     exercises
   };
+
+  if (bodyWeight) {
+    workoutData.bodyWeight = parseFloat(bodyWeight);
+  }
 
   if (editModeId) {
     const workoutRef = doc(db, "history", editModeId);
@@ -121,4 +125,20 @@ export const getLastWorkout = async (dayType) => {
   history.sort((a, b) => new Date(b.date) - new Date(a.date));
   
   return history[0];
+};
+
+export const getUserProfile = async () => {
+  const uid = requireAuth();
+  const profileRef = doc(db, "users", uid);
+  const profileSnap = await getDoc(profileRef);
+  if (profileSnap.exists()) {
+    return profileSnap.data();
+  }
+  return null;
+};
+
+export const saveUserProfile = async (profileData) => {
+  const uid = requireAuth();
+  const profileRef = doc(db, "users", uid);
+  await setDoc(profileRef, { ...profileData, updatedAt: new Date().toISOString() }, { merge: true });
 };

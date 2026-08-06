@@ -88,6 +88,7 @@ const Logger = () => {
     setExercises(newEx);
   };
 
+  const [bodyWeight, setBodyWeight] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
@@ -103,7 +104,7 @@ const Logger = () => {
       unit: ex.unit || 'lbs'
     }));
 
-    await saveWorkout(dayType, formattedEx, workoutDate, editModeId);
+    await saveWorkout(dayType, formattedEx, workoutDate, editModeId, bodyWeight);
     setIsSaving(false);
     navigate('/history');
   };
@@ -236,6 +237,19 @@ const Logger = () => {
                 </div>
               );
             })}
+          </div>
+
+          <div style={{ marginTop: '24px', padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+            <label className="form-label">Body Weight (kg) - Optional</label>
+            <input 
+              type="number" 
+              step="0.1"
+              className="form-input" 
+              placeholder="e.g. 76.5"
+              value={bodyWeight}
+              onChange={(e) => setBodyWeight(e.target.value)}
+              style={{ maxWidth: '200px' }}
+            />
           </div>
 
           <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>

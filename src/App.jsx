@@ -5,7 +5,8 @@ import Dashboard from './pages/Dashboard';
 import Logger from './pages/Logger';
 import HistoryPage from './pages/History';
 import Login from './pages/Login';
-import { auth } from './utils/storage';
+import Onboarding from './pages/Onboarding';
+import { auth, getUserProfile } from './utils/storage';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 const Navigation = () => {
@@ -102,14 +103,32 @@ const Navigation = () => {
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [hasProfile, setHasProfile] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        try {
+          const profile = await getUserProfile();
+          setHasProfile(!!profile);
+        } catch(e) {
+          console.error(e);
+        }
+      } else {
+        setHasProfile(false);
+      }
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
+
+  const handleOnboardingComplete = async () => {
+    setLoading(true);
+    const profile = await getUserProfile();
+    setHasProfile(!!profile);
+    setLoading(false);
+  };
 
   if (loading) {
     return (
@@ -121,6 +140,10 @@ function App() {
 
   if (!user) {
     return <Login />;
+  }
+
+  if (!hasProfile) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
   return (
