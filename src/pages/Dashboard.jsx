@@ -1,23 +1,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getHistory, getUserProfile } from '../utils/storage';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { getHistory, getUserProfile, getCustomExerciseMap } from '../utils/storage';
+import { baseExerciseMap, findExerciseMatch, allMuscles } from '../utils/exerciseDatabase';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { TrendingUp, Award, Calendar, Activity, User, Scale } from 'lucide-react';
 
 const Dashboard = () => {
   const [history, setHistory] = useState([]);
   const [profile, setProfile] = useState(null);
+  const [customMap, setCustomMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [metricType, setMetricType] = useState('weight'); // 'weight', '1rm', 'volume'
+  const [metricType, setMetricType] = useState('weight');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const [histData, profData] = await Promise.all([getHistory(), getUserProfile()]);
+        const [histData, profData, customMapData] = await Promise.all([
+          getHistory(), 
+          getUserProfile(),
+          getCustomExerciseMap()
+        ]);
         setHistory(histData);
         setProfile(profData);
+        setCustomMap(customMapData);
       } catch (err) {
         console.error(err);
         setError(err.message);
@@ -28,11 +35,15 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  // Process data for charts
-  const { exerciseData, insights, bodyWeightData } = useMemo(() => {
+  const { exerciseData, insights, bodyWeightData, muscleRadarData } = useMemo(() => {
     const exData = {};
     const generatedInsights = [];
     const bwData = [];
+    
+    // Muscle Engagement Aggregator
+    const muscleVolumeMap = {};
+    allMuscles.forEach(m => { muscleVolumeMap[m] = 0; });
+    const combinedDb = { ...baseExerciseMap, ...customMap };
     
     if (profile) {
       const birthDate = new Date(profile.birthday);
@@ -73,30 +84,72 @@ const Dashboard = () => {
     }
 
     if (history.length > 0) {
-      // Sort history chronologically for the charts (oldest to newest)
+      // Date limits (Last 60 days for muscle radar)
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
       const sortedHistory = [...history].sort((a, b) => new Date(a.date) - new Date(b.date));
       
       sortedHistory.forEach(session => {
-        const dateStr = new Date(session.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        const sessionDate = new Date(session.date);
+        const dateStr = sessionDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        const isWithin60Days = sessionDate >= sixtyDaysAgo;
         
         session.exercises.forEach(ex => {
           if (!exData[ex.name]) {
             exData[ex.name] = [];
           }
           
-          const reps = ex.reps || 1;
-          const sets = ex.sets || 1;
-          const weight = parseFloat(ex.weight) || 0;
-          
-          const oneRepMax = weight > 0 ? weight * (1 + (reps / 30)) : 0;
-          const volume = weight * sets * reps;
+          let totalVolume = 0;
+          let max1RM = 0;
+          let maxWeight = 0;
 
-          exData[ex.name].push({
-            date: dateStr,
-            weight: weight,
-            oneRepMax: Math.round(oneRepMax),
-            volume: volume
-          });
+          if (ex.setDetails && ex.setDetails.length > 0) {
+            ex.setDetails.forEach(s => {
+              const sReps = parseInt(s.reps) || 0;
+              const sWeight = parseFloat(s.weight) || 0;
+              if (sReps > 0 && sWeight > 0) {
+                totalVolume += (sReps * sWeight);
+                const current1RM = sWeight * (1 + (sReps / 30));
+                if (current1RM > max1RM) max1RM = current1RM;
+                if (sWeight > maxWeight) maxWeight = sWeight;
+              }
+            });
+          } else {
+            // Legacy Support
+            const reps = ex.reps || 1;
+            const sets = ex.sets || 1;
+            const weight = parseFloat(ex.weight) || 0;
+            
+            totalVolume = weight * sets * reps;
+            max1RM = weight > 0 ? weight * (1 + (reps / 30)) : 0;
+            maxWeight = weight;
+          }
+
+          if (maxWeight > 0 || max1RM > 0 || totalVolume > 0) {
+            exData[ex.name].push({
+              date: dateStr,
+              weight: maxWeight,
+              oneRepMax: Math.round(max1RM),
+              volume: totalVolume
+            });
+          }
+
+          // Muscle Engagement (only last 60 days)
+          if (isWithin60Days) {
+            const matchedKey = findExerciseMatch(ex.name, combinedDb);
+            if (matchedKey) {
+              const mapping = combinedDb[matchedKey];
+              mapping.primary.forEach(m => {
+                if (muscleVolumeMap[m] !== undefined) muscleVolumeMap[m] += totalVolume * 1.0;
+              });
+              if (mapping.secondary) {
+                mapping.secondary.forEach(m => {
+                  if (muscleVolumeMap[m] !== undefined) muscleVolumeMap[m] += totalVolume * 0.5;
+                });
+              }
+            }
+          }
         });
       });
 
@@ -128,7 +181,6 @@ const Dashboard = () => {
         });
       }
 
-      // Find biggest improvement (using 1RM for truer strength calculation)
       let bestImprovement = 0;
       let bestExercise = '';
 
@@ -155,8 +207,17 @@ const Dashboard = () => {
       }
     }
 
-    return { exerciseData: exData, insights: generatedInsights, bodyWeightData: bwData };
-  }, [history, profile]);
+    // Format Radar Data (only keeping muscles that have some volume or are major)
+    const radarData = Object.keys(muscleVolumeMap)
+      .map(muscle => ({
+        muscle,
+        volume: Math.round(muscleVolumeMap[muscle])
+      }))
+      .filter(m => m.volume > 0) // Filter out zero volume to keep the chart clean
+      .sort((a, b) => b.volume - a.volume); // Sort to group large volumes if possible
+
+    return { exerciseData: exData, insights: generatedInsights, bodyWeightData: bwData, muscleRadarData: radarData };
+  }, [history, profile, customMap]);
 
   if (loading) {
     return <div style={{ textAlign: 'center', marginTop: '64px', color: 'var(--text-secondary)' }}>Loading dashboard...</div>;
@@ -216,6 +277,32 @@ const Dashboard = () => {
           </div>
         ))}
       </div>
+
+      {muscleRadarData.length > 2 && (
+        <div className="glass-panel animate-fade-in stagger-2" style={{ marginBottom: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <h3 style={{ margin: '0 0 20px 0', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Activity size={20} color="var(--primary-color)" /> Muscle Engagement Overview (Last 60 Days)
+          </h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '16px', alignSelf: 'flex-start' }}>
+            This radar chart shows which muscles received the most volume based on your exercise mapping.
+          </p>
+          <div style={{ height: '400px', width: '100%', maxWidth: '600px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={muscleRadarData}>
+                <PolarGrid stroke="var(--border-color)" />
+                <PolarAngleAxis dataKey="muscle" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} />
+                <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
+                <Radar name="Volume" dataKey="volume" stroke="var(--primary-color)" fill="var(--primary-color)" fillOpacity={0.4} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '8px' }}
+                  itemStyle={{ color: 'var(--primary-color)' }}
+                  formatter={(value) => [`${value.toLocaleString()} lbs`, 'Volume']}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {bodyWeightData.length > 1 && (
         <div className="glass-panel animate-fade-in stagger-3" style={{ marginBottom: '40px' }}>

@@ -142,3 +142,19 @@ export const saveUserProfile = async (profileData) => {
   const profileRef = doc(db, "users", uid);
   await setDoc(profileRef, { ...profileData, updatedAt: new Date().toISOString() }, { merge: true });
 };
+
+export const getCustomExerciseMap = async () => {
+  const uid = requireAuth();
+  const profileRef = doc(db, "users", uid);
+  const profileSnap = await getDoc(profileRef);
+  if (profileSnap.exists()) {
+    return profileSnap.data().customExercises || {};
+  }
+  return {};
+};
+
+export const saveCustomExerciseMap = async (customExercises) => {
+  const uid = requireAuth();
+  const profileRef = doc(db, "users", uid);
+  await setDoc(profileRef, { customExercises }, { merge: true });
+};
