@@ -151,18 +151,48 @@ const History = () => {
                     flexDirection: 'column',
                     gap: '8px'
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                       <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{ex.name}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--primary-color)', fontWeight: 'bold' }}>
-                        <Weight size={14} />
-                        {ex.weight} {ex.unit || 'lbs'}
-                      </div>
+                      
+                      {/* Legacy single-weight fallback badge */}
+                      {(!ex.setDetails || ex.setDetails.length === 0) && ex.weight && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--primary-color)', fontWeight: 'bold' }}>
+                          <Weight size={14} />
+                          {ex.weight} {ex.unit || 'lbs'}
+                        </div>
+                      )}
+                      
+                      {/* New setDetails unit badge */}
+                      {(ex.setDetails && ex.setDetails.length > 0) && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--primary-color)', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                          <Weight size={14} />
+                          {ex.unit || 'lbs'}
+                        </div>
+                      )}
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '12px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      {ex.sets && <span>Sets: <strong style={{color: 'var(--text-primary)'}}>{ex.sets}</strong></span>}
-                      {ex.reps && <span>Reps: <strong style={{color: 'var(--text-primary)'}}>{ex.reps}</strong></span>}
-                    </div>
+                    {/* Legacy Sets/Reps rendering */}
+                    {(!ex.setDetails || ex.setDetails.length === 0) ? (
+                      <div style={{ display: 'flex', gap: '12px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        {ex.sets && <span>Sets: <strong style={{color: 'var(--text-primary)'}}>{ex.sets}</strong></span>}
+                        {ex.reps && <span>Reps: <strong style={{color: 'var(--text-primary)'}}>{ex.reps}</strong></span>}
+                      </div>
+                    ) : (
+                      /* New Detailed Sets rendering */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                          Sets: <strong style={{color: 'var(--text-primary)'}}>{ex.sets || ex.setDetails.length}</strong>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))', gap: '6px' }}>
+                          {ex.setDetails.map((set, setIdx) => (
+                            <div key={setIdx} style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 4px', borderRadius: '6px', fontSize: '0.75rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                              <div style={{ color: 'var(--text-muted)', marginBottom: '2px', fontSize: '0.7rem' }}>Set {setIdx + 1}</div>
+                              <div style={{ color: 'var(--primary-color)', fontWeight: 'bold' }}>{set.weight} x {set.reps}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

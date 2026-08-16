@@ -104,10 +104,12 @@ const Dashboard = () => {
           let max1RM = 0;
           let maxWeight = 0;
 
+          const weightMultiplier = ex.unit === 'lbs' ? 0.453592 : 1;
+
           if (ex.setDetails && ex.setDetails.length > 0) {
             ex.setDetails.forEach(s => {
               const sReps = parseInt(s.reps) || 0;
-              const sWeight = parseFloat(s.weight) || 0;
+              const sWeight = (parseFloat(s.weight) || 0) * weightMultiplier;
               if (sReps > 0 && sWeight > 0) {
                 totalVolume += (sReps * sWeight);
                 const current1RM = sWeight * (1 + (sReps / 30));
@@ -119,7 +121,7 @@ const Dashboard = () => {
             // Legacy Support
             const reps = ex.reps || 1;
             const sets = ex.sets || 1;
-            const weight = parseFloat(ex.weight) || 0;
+            const weight = (parseFloat(ex.weight) || 0) * weightMultiplier;
             
             totalVolume = weight * sets * reps;
             max1RM = weight > 0 ? weight * (1 + (reps / 30)) : 0;
@@ -296,7 +298,7 @@ const Dashboard = () => {
                 <Tooltip 
                   contentStyle={{ backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '8px' }}
                   itemStyle={{ color: 'var(--primary-color)' }}
-                  formatter={(value) => [`${value.toLocaleString()} lbs`, 'Volume']}
+                  formatter={(value) => [`${value.toLocaleString()} kg`, 'Volume']}
                 />
               </RadarChart>
             </ResponsiveContainer>
