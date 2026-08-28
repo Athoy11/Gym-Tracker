@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Dumbbell, LayoutDashboard, History, LogOut } from 'lucide-react';
+import { Dumbbell, LayoutDashboard, History, LogOut, CalendarCheck } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import Logger from './pages/Logger';
 import HistoryPage from './pages/History';
+import Planner from './pages/Planner';
 import Login from './pages/Login';
 import Onboarding from './pages/Onboarding';
 import { auth, getUserProfile } from './utils/storage';
@@ -14,6 +15,7 @@ const Navigation = () => {
   
   const navItems = [
     { path: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
+    { path: '/plan', icon: <CalendarCheck size={20} />, label: 'Plan' },
     { path: '/log', icon: <Dumbbell size={20} />, label: 'Log Workout' },
     { path: '/history', icon: <History size={20} />, label: 'History' }
   ];
@@ -152,6 +154,7 @@ function App() {
       <main className="container animate-fade-in" style={{ padding: '32px 24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/plan" element={<Planner />} />
           <Route path="/log" element={<Logger />} />
           <Route path="/history" element={<HistoryPage />} />
         </Routes>

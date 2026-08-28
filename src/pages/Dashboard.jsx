@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getHistory, getUserProfile, getCustomExerciseMap } from '../utils/storage';
+import { exportDashboardToCSV } from '../utils/export';
 import { baseExerciseMap, findExerciseMatch, allMuscles } from '../utils/exerciseDatabase';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { TrendingUp, Award, Calendar, Activity, User, Scale } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, BarChart, Bar } from 'recharts';
+import { TrendingUp, Award, Calendar, Activity, User, Scale, Download, Filter } from 'lucide-react';
 
 const Dashboard = () => {
   const [history, setHistory] = useState([]);
@@ -11,6 +12,10 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [metricType, setMetricType] = useState('weight');
+  
+  const [filterDay, setFilterDay] = useState('All');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,6 +40,23 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
+  const filteredHistory = useMemo(() => {
+    return history.filter(entry => {
+      let pass = true;
+      if (filterDay !== 'All' && entry.dayType !== filterDay) pass = false;
+      
+      if (startDate) {
+        if (new Date(entry.date) < new Date(startDate)) pass = false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (new Date(entry.date) > end) pass = false;
+      }
+      return pass;
+    }).sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [history, filterDay, startDate, endDate]);
+
   const { exerciseData, insights, bodyWeightData, muscleRadarData } = useMemo(() => {
     const exData = {};
     const generatedInsights = [];
@@ -56,7 +78,7 @@ const Dashboard = () => {
         weight: profile.weight
       });
 
-      const sortedHistoryForW = [...history].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const sortedHistoryForW = [...filteredHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
       const weightHistory = sortedHistoryForW.filter(h => h.bodyWeight).map(h => ({
         date: new Date(h.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
         weight: h.bodyWeight
@@ -83,12 +105,12 @@ const Dashboard = () => {
       });
     }
 
-    if (history.length > 0) {
+    if (filteredHistory.length > 0) {
       // Date limits (Last 60 days for muscle radar)
       const sixtyDaysAgo = new Date();
       sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
-      const sortedHistory = [...history].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const sortedHistory = [...filteredHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
       
       sortedHistory.forEach(session => {
         const sessionDate = new Date(session.date);
@@ -156,11 +178,11 @@ const Dashboard = () => {
       });
 
       // Generate insights
-      let totalWorkouts = history.length;
+      let totalWorkouts = filteredHistory.length;
       let mostFrequentDay = '';
       const dayCounts = { Push: 0, Pull: 0, Leg: 0 };
       
-      history.forEach(h => {
+      filteredHistory.forEach(h => {
         if (dayCounts[h.dayType] !== undefined) dayCounts[h.dayType]++;
       });
       
@@ -219,7 +241,11 @@ const Dashboard = () => {
       .sort((a, b) => b.volume - a.volume); // Sort to group large volumes if possible
 
     return { exerciseData: exData, insights: generatedInsights, bodyWeightData: bwData, muscleRadarData: radarData };
-  }, [history, profile, customMap]);
+  }, [filteredHistory, profile, customMap]);
+
+  const handleExport = () => {
+    exportDashboardToCSV(exerciseData, bodyWeightData, muscleRadarData);
+  };
 
   if (loading) {
     return <div style={{ textAlign: 'center', marginTop: '64px', color: 'var(--text-secondary)' }}>Loading dashboard...</div>;
@@ -254,12 +280,83 @@ const Dashboard = () => {
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
-      <div style={{ marginBottom: '32px' }}>
-        <h2 className="text-gradient" style={{ fontSize: '2.5rem', margin: '0 0 8px 0' }}>
-          {profile ? `Welcome, ${profile.name}` : 'Dashboard'}
-        </h2>
-        <p style={{ color: 'var(--text-secondary)' }}>Track your progressive overload and body metrics</p>
+      <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <h2 className="text-gradient" style={{ fontSize: '2.5rem', margin: '0 0 8px 0' }}>
+            {profile ? `Welcome, ${profile.name}` : 'Dashboard'}
+          </h2>
+          <p style={{ color: 'var(--text-secondary)' }}>Track your progressive overload and body metrics</p>
+        </div>
+        <button 
+          onClick={handleExport}
+          className="btn btn-outline"
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '0.9rem' }}
+          disabled={filteredHistory.length === 0}
+        >
+          <Download size={18} />
+          Export CSV
+        </button>
       </div>
+
+      {history.length > 0 && (
+        <div className="glass-panel" style={{ marginBottom: '32px', padding: '20px', display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary-color)', fontWeight: 'bold' }}>
+            <Filter size={18} /> Filters
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Workout Type</label>
+            <select 
+              className="form-input" 
+              value={filterDay} 
+              onChange={(e) => setFilterDay(e.target.value)}
+              style={{ padding: '8px 12px', minWidth: '120px' }}
+            >
+              <option value="All">All Types</option>
+              <option value="Push">Push</option>
+              <option value="Pull">Pull</option>
+              <option value="Leg">Leg</option>
+            </select>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Start Date</label>
+            <input 
+              type="date" 
+              className="form-input" 
+              value={startDate} 
+              onChange={(e) => setStartDate(e.target.value)}
+              style={{ padding: '8px 12px' }}
+            />
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>End Date</label>
+            <input 
+              type="date" 
+              className="form-input" 
+              value={endDate} 
+              onChange={(e) => setEndDate(e.target.value)}
+              style={{ padding: '8px 12px' }}
+            />
+          </div>
+          
+          {(filterDay !== 'All' || startDate || endDate) && (
+            <button 
+              onClick={() => { setFilterDay('All'); setStartDate(''); setEndDate(''); }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'underline', padding: '10px 0' }}
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      )}
+
+      {filteredHistory.length === 0 && history.length > 0 && (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+          No workouts match your current filters.
+        </div>
+      )}
 
       <div style={{ 
         display: 'grid', 
@@ -335,7 +432,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {history.length > 0 && (
+      {filteredHistory.length > 0 && (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
             <h3 style={{ margin: 0 }}>Exercise Progress</h3>

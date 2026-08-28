@@ -158,3 +158,19 @@ export const saveCustomExerciseMap = async (customExercises) => {
   const profileRef = doc(db, "users", uid);
   await setDoc(profileRef, { customExercises }, { merge: true });
 };
+
+export const savePlan = async (dayType, exercises) => {
+  const uid = requireAuth();
+  const planRef = doc(db, "plans", `${uid}_${dayType}`);
+  await setDoc(planRef, { userId: uid, dayType, exercises, updatedAt: new Date().toISOString() });
+};
+
+export const getPlan = async (dayType) => {
+  const uid = requireAuth();
+  const planRef = doc(db, "plans", `${uid}_${dayType}`);
+  const planSnap = await getDoc(planRef);
+  if (planSnap.exists()) {
+    return planSnap.data().exercises || [];
+  }
+  return [];
+};

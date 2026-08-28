@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getRoutine, saveWorkout, getLastWorkout, getCustomExerciseMap, saveCustomExerciseMap } from '../utils/storage';
+import { getRoutine, saveWorkout, getLastWorkout, getCustomExerciseMap, saveCustomExerciseMap, getPlan } from '../utils/storage';
 import { baseExerciseMap, musclesByDay, findExerciseMatch, allMuscles } from '../utils/exerciseDatabase';
-import { Plus, Trash2, Save, Activity } from 'lucide-react';
+import { Plus, Trash2, Save, Activity, CalendarCheck } from 'lucide-react';
 
 const Logger = () => {
   const [dayType, setDayType] = useState('');
@@ -12,6 +12,7 @@ const Logger = () => {
   const [ghostData, setGhostData] = useState({});
   const [customMap, setCustomMap] = useState({});
   const [activeDropdownIndex, setActiveDropdownIndex] = useState(null);
+  const [savedPlan, setSavedPlan] = useState(null);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -86,6 +87,15 @@ const Logger = () => {
   useEffect(() => {
     if (dayType) {
       getRoutine(dayType).then(setRoutineCache);
+      getPlan(dayType).then(plan => {
+        if (plan && plan.length > 0) {
+          setSavedPlan(plan);
+        } else {
+          setSavedPlan(null);
+        }
+      });
+    } else {
+      setSavedPlan(null);
     }
   }, [dayType]);
 
@@ -208,6 +218,16 @@ const Logger = () => {
     navigate('/history');
   };
 
+  const handleLoadPlan = () => {
+    if (savedPlan) {
+      if (window.confirm("This will replace your current exercises with your saved plan. Continue?")) {
+        // Deep copy the plan so modifications don't mutate the state directly
+        const clonedPlan = JSON.parse(JSON.stringify(savedPlan));
+        setExercises(clonedPlan);
+      }
+    }
+  };
+
   const currentDayMuscles = dayType ? musclesByDay[dayType] : allMuscles;
   const combinedDb = { ...baseExerciseMap, ...customMap };
   const allKnownExercises = Object.keys(combinedDb);
@@ -256,9 +276,20 @@ const Logger = () => {
 
       {dayType && (
         <div className="glass-panel animate-fade-in stagger-1" style={{ overflowX: 'visible' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h3 style={{ margin: 0 }}>Exercises</h3>
-            {routineCache.length === 0 && !editModeId && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <h3 style={{ margin: 0 }}>Exercises</h3>
+              {savedPlan && !editModeId && (
+                <button 
+                  onClick={handleLoadPlan}
+                  className="btn btn-outline"
+                  style={{ padding: '6px 12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <CalendarCheck size={16} /> Load Plan
+                </button>
+              )}
+            </div>
+            {routineCache.length === 0 && !editModeId && !savedPlan && (
               <span style={{ fontSize: '0.85rem', color: 'var(--success-color)', background: 'rgba(204, 255, 0, 0.1)', padding: '4px 8px', borderRadius: '4px' }}>
                 First Time Setup
               </span>
