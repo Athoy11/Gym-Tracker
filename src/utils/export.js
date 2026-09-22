@@ -16,7 +16,7 @@ export const exportHistoryToCSV = (historyData) => {
     
     entry.exercises.forEach(ex => {
       const name = `"${ex.name.replace(/"/g, '""')}"`;
-      const unit = ex.unit || 'lbs';
+      const unit = ex.unit || 'Kgs';
       
       if (ex.setDetails && ex.setDetails.length > 0) {
         ex.setDetails.forEach((set, idx) => {

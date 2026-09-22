@@ -23,7 +23,7 @@ const Planner = () => {
         if (plan && plan.length > 0) {
           setExercises(plan);
         } else {
-          setExercises([{ name: '', sets: '', unit: 'lbs', setDetails: [], customMapping: { primary: [], secondary: [] } }]);
+          setExercises([{ name: '', sets: '', unit: 'Kgs', setDetails: [], customMapping: { primary: [], secondary: [] } }]);
         }
       } catch (err) {
         console.error("Failed to load plan:", err);
@@ -37,7 +37,7 @@ const Planner = () => {
   }, [dayType]);
 
   const handleAddExercise = () => {
-    setExercises([...exercises, { name: '', sets: '', unit: 'lbs', setDetails: [], customMapping: { primary: [], secondary: [] } }]);
+    setExercises([...exercises, { name: '', sets: '', unit: 'Kgs', setDetails: [], customMapping: { primary: [], secondary: [] } }]);
   };
 
   const handleRemoveExercise = (index) => {

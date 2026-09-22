@@ -41,7 +41,7 @@ const Logger = () => {
         return {
           name: e.name,
           sets: e.sets || details.length || '',
-          unit: e.unit || 'lbs',
+          unit: e.unit || 'Kgs',
           setDetails: details,
           customMapping: { primary: [], secondary: [] }
         };
@@ -55,9 +55,9 @@ const Logger = () => {
         if (dayType && !editModeId) {
           const routine = await getRoutine(dayType);
           if (routine.length > 0) {
-            setExercises(routine.map(name => ({ name, sets: '', unit: 'lbs', setDetails: [], customMapping: { primary: [], secondary: [] } })));
+            setExercises(routine.map(name => ({ name, sets: '', unit: 'Kgs', setDetails: [], customMapping: { primary: [], secondary: [] } })));
           } else {
-            setExercises([{ name: '', sets: '', unit: 'lbs', setDetails: [], customMapping: { primary: [], secondary: [] } }]);
+            setExercises([{ name: '', sets: '', unit: 'Kgs', setDetails: [], customMapping: { primary: [], secondary: [] } }]);
           }
           
           const lastWorkout = await getLastWorkout(dayType);
@@ -100,7 +100,7 @@ const Logger = () => {
   }, [dayType]);
 
   const handleAddExercise = () => {
-    setExercises([...exercises, { name: '', sets: '', unit: 'lbs', setDetails: [], customMapping: { primary: [], secondary: [] } }]);
+    setExercises([...exercises, { name: '', sets: '', unit: 'Kgs', setDetails: [], customMapping: { primary: [], secondary: [] } }]);
   };
 
   const handleRemoveExercise = (index) => {
@@ -200,7 +200,7 @@ const Logger = () => {
       return {
         name: ex.name,
         sets: parseInt(ex.sets) || ex.setDetails.length,
-        unit: ex.unit || 'lbs',
+        unit: ex.unit || 'Kgs',
         setDetails: ex.setDetails.map(s => ({
           reps: parseInt(s.reps) || 0,
           weight: parseFloat(s.weight) || 0

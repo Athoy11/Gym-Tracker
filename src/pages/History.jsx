@@ -251,7 +251,7 @@ const History = () => {
                         {(!ex.setDetails || ex.setDetails.length === 0) && ex.weight && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--primary-color)', fontWeight: 'bold' }}>
                             <Weight size={14} />
-                            {ex.weight} {ex.unit || 'lbs'}
+                            {ex.weight} {ex.unit || 'Kgs'}
                           </div>
                         )}
                         
@@ -259,7 +259,7 @@ const History = () => {
                         {(ex.setDetails && ex.setDetails.length > 0) && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--primary-color)', fontWeight: 'bold', fontSize: '0.85rem' }}>
                             <Weight size={14} />
-                            {ex.unit || 'lbs'}
+                            {ex.unit || 'Kgs'}
                           </div>
                         )}
                       </div>
