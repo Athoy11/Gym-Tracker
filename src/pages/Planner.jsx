@@ -152,7 +152,7 @@ const Planner = () => {
 
               return (
                 <div key={index} style={{ padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-color)', position: 'relative' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '12px', alignItems: 'center', marginBottom: '16px' }}>
+                  <div className="exercise-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '12px', alignItems: 'center', marginBottom: '16px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative' }}>
                       <input
                         type="text"
